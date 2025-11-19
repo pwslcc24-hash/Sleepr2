@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum SleepQuality {
+  Excellent
+  Good
+  Fair
+  Poor
+}
+
+enum SourceType {
+  manual
+  csv
+  garmin
+  other
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String?
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(user)
+  bio          String?
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastLoginAt  DateTime?
+  disabled     Boolean  @default(false)
+  sleepSessions SleepSession[]
+  reactions    Reaction[]
+  comments     Comment[]
+  following    Follow[]  @relation("following")
+  followers    Follow[]  @relation("followers")
+  groupsOwned  Group[]   @relation("GroupOwner")
+  groupMembers GroupMember[]
+  importJobs   ImportJob[]
+}
+
+model SleepSession {
+  id               String    @id @default(cuid())
+  user             User      @relation(fields: [userId], references: [id])
+  userId           String
+  date             DateTime
+  title            String?
+  description      String?
+  score            Int?
+  restingHeartRate Int?
+  quality          SleepQuality?
+  durationMinutes  Int
+  bedtime          DateTime?
+  wakeTime         DateTime?
+  source           SourceType @default(manual)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  reactions        Reaction[]
+  comments         Comment[]
+}
+
+model Reaction {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String
+  sleepSession   SleepSession @relation(fields: [sleepSessionId], references: [id])
+  sleepSessionId String
+  type           String
+  createdAt      DateTime @default(now())
+}
+
+model Comment {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String
+  sleepSession   SleepSession @relation(fields: [sleepSessionId], references: [id])
+  sleepSessionId String
+  text           String
+  createdAt      DateTime @default(now())
+}
+
+model Follow {
+  id           String   @id @default(cuid())
+  follower     User     @relation("following", fields: [followerId], references: [id])
+  followerId   String
+  following    User     @relation("followers", fields: [followingId], references: [id])
+  followingId  String
+  createdAt    DateTime @default(now())
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  owner       User     @relation("GroupOwner", fields: [ownerId], references: [id])
+  ownerId     String
+  createdAt   DateTime @default(now())
+  members     GroupMember[]
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  group     Group    @relation(fields: [groupId], references: [id])
+  groupId   String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  role      String
+  createdAt DateTime @default(now())
+}
+
+model ImportJob {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  createdAt    DateTime @default(now())
+  source       String
+  totalRows    Int
+  successCount Int
+  failureCount Int
+  errorSummary String?
+}
